@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28407.52
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsulRegister", "ConsulRegister\ConsulRegister.csproj", "{43324573-75FC-411B-8D58-245C6DA6FFAB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{43324573-75FC-411B-8D58-245C6DA6FFAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43324573-75FC-411B-8D58-245C6DA6FFAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43324573-75FC-411B-8D58-245C6DA6FFAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43324573-75FC-411B-8D58-245C6DA6FFAB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2BB69873-8A7C-4D5E-B2D2-69A8278F21A1}
+	EndGlobalSection
+EndGlobal
