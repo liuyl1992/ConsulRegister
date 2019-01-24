@@ -11,6 +11,12 @@ namespace ConsulRegister
     {
         public string ServiceName { get; set; }
 
+        /// <summary>
+        /// 当前服务所在地址host:port
+        /// 格式："127.0.0.1:666"
+        /// </summary>
+        public string SelfAddress { get; set; }
+        
         public ConsulOptions Consul { get; set; }
     }
 
