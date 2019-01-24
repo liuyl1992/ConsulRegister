@@ -17,6 +17,12 @@ namespace ConsulRegister
 {
     public static class RegisterToConsulExtension
     {
+         /// <summary>
+        /// 宿主机ip
+        /// 通过docker run -e NODE_IP=192.168.66.66命令获得
+        /// </summary>
+        private static string HostIpV4Address { get; set; }
+        
         /// <summary>
         /// Add Consul
         /// 添加consul
@@ -58,82 +64,58 @@ namespace ConsulRegister
             IApplicationLifetime appLife = app.ApplicationServices.GetRequiredService<IApplicationLifetime>();
             IOptions<ServiceDiscoveryOptions> serviceOptions = app.ApplicationServices.GetRequiredService<IOptions<ServiceDiscoveryOptions>>();
             var features = app.Properties["server.Features"] as FeatureCollection;
+            //http://+:80
+            if (!int.TryParse(features.Get<IServerAddressesFeature>().Addresses.FirstOrDefault()?.Split(':')[2], out int port))
+                port = 80;
 
-            var port = new Uri(features.Get<IServerAddressesFeature>()
-                .Addresses
-                .FirstOrDefault()).Port;
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine($"application port is :{port}");
-            var addressIpv4Hosts = NetworkInterface.GetAllNetworkInterfaces()
-            .OrderByDescending(c => c.Speed)
-            .Where(c => c.NetworkInterfaceType != NetworkInterfaceType.Loopback && c.OperationalStatus == OperationalStatus.Up);
-
-            foreach (var item in addressIpv4Hosts)
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"command get host: {HostIpV4Address}");
+            Console.WriteLine($"real port: {port}");
+            
+            if (string.IsNullOrEmpty(HostIpV4Address))
             {
-                var props = item.GetIPProperties();
-                //this is ip for ipv4
-                //这是ipv4的ip地址
-                var firstIpV4Address = props.UnicastAddresses
-                    .Where(c => c.Address.AddressFamily == AddressFamily.InterNetwork)
-                    .Select(c => c.Address)
-                    .FirstOrDefault().ToString();
-                var serviceId = $"{serviceOptions.Value.ServiceName}_{firstIpV4Address}:{port}";
-
-                var httpCheck = new AgentServiceCheck()
+                if (!string.IsNullOrWhiteSpace(serviceOptions.Value.SelfAddress))
                 {
-                    DeregisterCriticalServiceAfter = TimeSpan.FromMinutes(1),
-                    Interval = TimeSpan.FromSeconds(30),
-                    //this is default health check interface
-                    //这个是默认健康检查接口
-                    HTTP = $"{Uri.UriSchemeHttp}://{firstIpV4Address}:{port}/HealthCheck",
-                };
-
-                var registration = new AgentServiceRegistration()
+                    var addressTemp = serviceOptions.Value.SelfAddress.Split(':');
+                    HostIpV4Address = addressTemp[0];
+                    Console.WriteLine($"config host: {addressTemp[0]}");
+                    port = int.Parse(addressTemp[1]);
+                    Console.WriteLine($"config ort: {addressTemp[1]}");
+                }
+                else
                 {
-                    Checks = new[] { httpCheck },
-                    Address = firstIpV4Address.ToString(),
-                    ID = serviceId,
-                    Name = serviceOptions.Value.ServiceName,
-                    Port = port
-                };
-
-                consul.Agent.ServiceRegister(registration).GetAwaiter().GetResult();
-                                
-                //send consul request after service stop
-                //当服务停止后想consul发送的请求
-                appLife.ApplicationStopping.Register(() =>
-                {
-                    consul.Agent.ServiceDeregister(serviceId).GetAwaiter().GetResult();
-                });
-
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.WriteLine($"health check service:{httpCheck.HTTP}");
+                    HostIpV4Address = "localhost";
+                    Console.WriteLine($"config host: {HostIpV4Address}");
+                }
             }
+            var serviceId = $"{serviceOptions.Value.ServiceName}_{HostIpV4Address}:{port}";
 
-            //register localhost address
-            //注册本地地址
-            var localhostregistration = new AgentServiceRegistration()
+            var httpCheck = new AgentServiceCheck()
             {
-                Checks = new[] { new AgentServiceCheck()
-                {
-                    DeregisterCriticalServiceAfter = TimeSpan.FromMinutes(1),
-                    Interval = TimeSpan.FromSeconds(30),
-                    HTTP = $"{Uri.UriSchemeHttp}://localhost:{port}/HealthCheck",
-                } },
-                Address = "localhost",
-                ID = $"{serviceOptions.Value.ServiceName}_localhost:{port}",
+                DeregisterCriticalServiceAfter = TimeSpan.FromMinutes(1),
+                Interval = TimeSpan.FromSeconds(30),
+                HTTP = $"{Uri.UriSchemeHttp}://{HostIpV4Address}:{port}/HealthCheck",
+            };
+
+            var registration = new AgentServiceRegistration()
+            {
+                Checks = new[] { httpCheck },
+                Address = HostIpV4Address.ToString(),
+                ID = serviceId,
                 Name = serviceOptions.Value.ServiceName,
                 Port = port
             };
 
-            consul.Agent.ServiceRegister(localhostregistration).GetAwaiter().GetResult();
+            consul.Agent.ServiceRegister(registration).GetAwaiter().GetResult();
 
-            //send consul request after service stop
-            //当服务停止后想consul发送的请求
-            appLife.ApplicationStopping.Register(() =>
-            {
-                consul.Agent.ServiceDeregister(localhostregistration.ID).GetAwaiter().GetResult();
-            });
+            // 服务应用停止后发注册RestApi服务,停止后不通知consul剔除
+            //appLife.ApplicationStopping.Register(() =>
+            //{
+            //    consul.Agent.ServiceDeregister(serviceId).GetAwaiter().GetResult();
+            //});
+
+            Console.WriteLine($"健康检查服务:{httpCheck.HTTP}");
+
 
             app.Map("/HealthCheck", s =>
             {
